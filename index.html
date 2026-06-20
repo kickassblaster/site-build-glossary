@@ -68,6 +68,11 @@
   mark{background:var(--hi); color:#1a1300; border-radius:3px; padding:0 2px}
   .empty{text-align:center; color:var(--muted); padding:60px 20px; font-size:15px}
   .foot{text-align:center; color:var(--muted); font-size:11.5px; padding:24px 10px 8px; opacity:.7}
+  .toolbar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 4px 2px}
+  .toolbar .count{padding:0}
+  .seg{display:inline-flex; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:2px; flex:0 0 auto}
+  .seg button{font-family:inherit; font-size:12.5px; color:var(--muted); background:none; border:0; padding:6px 12px; border-radius:8px; cursor:pointer}
+  .seg button.active{background:var(--accent); color:#04101f; font-weight:600}
 </style>
 </head>
 <body>
@@ -82,7 +87,13 @@
   <div class="chips" id="chips"></div>
 </header>
 <main>
-  <div class="count" id="count"></div>
+  <div class="toolbar">
+    <div class="count" id="count"></div>
+    <div class="seg" id="seg">
+      <button data-mode="cat" class="active">Category</button>
+      <button data-mode="az">A&ndash;Z</button>
+    </div>
+  </div>
   <div id="list"></div>
   <div class="foot">Get Found By Bots &middot; 178 terms &middot; works offline</div>
 </main>
@@ -95,7 +106,9 @@ DATA.forEach((s,si)=> s.terms.forEach(t=> ALL.push({term:t.term, def:t.def, cat:
 const qEl=document.getElementById('q'), listEl=document.getElementById('list'),
       countEl=document.getElementById('count'), chipsEl=document.getElementById('chips'),
       clearEl=document.getElementById('clear');
-let activeCat=null;
+let activeCat=null, sortMode='cat';
+const sortKey=t=> t.term.replace(/^[^a-z0-9]+/i,'').toLowerCase();
+const letterOf=t=>{ const c=(sortKey(t)[0]||'#').toUpperCase(); return /[A-Z]/.test(c)?c:'#'; };
 
 // auto-wrap things that look like code (tags, files, @props) in <code>
 function codeify(s){
@@ -139,9 +152,11 @@ function render(){
   });
   countEl.textContent = rows.length + (rows.length===1?' term':' terms') + (q?` matching “${qEl.value.trim()}”`:'') ;
   if(!rows.length){ listEl.innerHTML='<div class="empty">No matches.<br>Try a different word.</div>'; return; }
-  let html='', lastCat=null;
+  if(sortMode==='az') rows = rows.slice().sort((a,b)=> sortKey(a).localeCompare(sortKey(b)) || a.term.localeCompare(b.term));
+  let html='', lastHead=null;
   rows.forEach(r=>{
-    if(r.cat!==lastCat){ html+=`<div class="seclabel">${esc(r.cat)}</div>`; lastCat=r.cat; }
+    const head = sortMode==='az' ? letterOf(r) : r.cat;
+    if(head!==lastHead){ html+=`<div class="seclabel">${esc(head)}</div>`; lastHead=head; }
     html+=`<div class="card"><p class="term">${hl(r.term,q)}</p>`+
           (r.def?`<p class="def">${hl(r.def,q)}</p>`:'')+`</div>`;
   });
@@ -151,6 +166,11 @@ function render(){
 
 qEl.addEventListener('input',render);
 clearEl.onclick=()=>{ qEl.value=''; qEl.focus(); render(); };
+document.querySelectorAll('#seg button').forEach(b=> b.onclick=()=>{
+  sortMode=b.dataset.mode;
+  document.querySelectorAll('#seg button').forEach(x=>x.classList.toggle('active', x===b));
+  render();
+});
 buildChips(); render();
 </script>
 </body>
